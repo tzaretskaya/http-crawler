@@ -48,7 +48,7 @@ public class NotifierService {
             try {
                 lock.wait();
             } catch (InterruptedException e) {
-                LOGGER.error("join was interrupted. Return not finished map");
+                LOGGER.error("Join was interrupted. Result not finished");
             }
         }
     }

@@ -43,7 +43,7 @@ public class TopWordFrequencyController {
         if (urlString.endsWith("/")) {
             urlString = urlString.substring(0, urlString.length() - 1);
         }
-        Map<String, Long> result2 = topWordFrequencyService.getTopWordsFrequency(urlString, depth);
-        return new TopWordsResponse(result2);
+        Map<String, Long> result = topWordFrequencyService.getTopWordsFrequency(urlString, depth);
+        return new TopWordsResponse(result);
     }
 }

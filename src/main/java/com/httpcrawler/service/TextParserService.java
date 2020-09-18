@@ -21,7 +21,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.LongAdder;
 
 @Service
@@ -34,7 +33,6 @@ public class TextParserService {
     private final ConcurrentMap<Root, ConcurrentMap<String, LongAdder>> wordFrequencies;
     private final NotifierService notifierService;
     private final ExecutorService executorService;
-    private AtomicInteger atomicInteger;
 
     public TextParserService(
             @Value("${text-parser.thread-count:4}") int threadCount,
@@ -54,7 +52,6 @@ public class TextParserService {
     }
 
     public void prepareForRoot(Root root) {
-        atomicInteger = new AtomicInteger(0);
         wordFrequencies.putIfAbsent(root, new ConcurrentHashMap<>());
     }
 
@@ -89,7 +86,6 @@ public class TextParserService {
                     if ("".equals(word)) {
                         continue;
                     }
-                    atomicInteger.addAndGet(1);
                     wordFrequencies.get(root).computeIfAbsent(word, x -> new LongAdder()).increment(); //todo
                 }
             }
