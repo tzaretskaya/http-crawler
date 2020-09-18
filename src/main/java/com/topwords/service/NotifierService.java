@@ -25,18 +25,12 @@ public class NotifierService {
     }
 
     public void increment(Object root) {
-        LongAdder longAdder = pending.get(root);
-        longAdder.increment();
-//        System.out.println("pending inc "+ (longAdder.longValue()+1));
-//        pending.get(root).increment();
+        pending.get(root).increment();
     }
 
     public void decrementPending(Object root) {
         pending.get(root).decrement();
-        long l = pending.get(root).longValue();
-//        System.out.println("pending desc "+ l);
-        if (l == 0L) {
-            System.out.println("--------------------FINISHED!-------------------");
+        if (pending.get(root).longValue() == 0L) {
             synchronized (root) {
                 root.notify();
             }

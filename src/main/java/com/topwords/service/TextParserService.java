@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.ParametersAreNonnullByDefault;
+import javax.annotation.PreDestroy;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -19,6 +20,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.LongAdder;
 
 @Service
@@ -31,6 +33,7 @@ public class TextParserService {
     private final ConcurrentMap<Object, ConcurrentMap<String, LongAdder>> wordFrequencies;
     private final NotifierService notifierService;
     private final ExecutorService executorService;
+    private AtomicInteger atomicInteger;
 
     public TextParserService(
             @Value("${text-parser.thread-count:4}") int threadCount,
@@ -50,6 +53,7 @@ public class TextParserService {
     }
 
     public void prepareForRoot(Object root) {
+        atomicInteger = new AtomicInteger(0);
         wordFrequencies.putIfAbsent(root, new ConcurrentHashMap<>());
     }
 
@@ -62,7 +66,13 @@ public class TextParserService {
     }
 
     public Map<String, LongAdder> getResult(Object root) {
+        System.out.println("words number: "+atomicInteger.get());
         return new HashMap<>(wordFrequencies.get(root));
+    }
+
+    @PreDestroy
+    protected void stop() {
+        executorService.shutdownNow();
     }
 
     private void doParseText(Object root, Document doc, String url) {
@@ -80,7 +90,8 @@ public class TextParserService {
                     if ("".equals(word)) {
                         continue;
                     }
-                    wordFrequencies.get(root).computeIfAbsent(word, x -> new LongAdder()).increment();
+                    atomicInteger.addAndGet(1);
+                    wordFrequencies.get(root).computeIfAbsent(word, x -> new LongAdder()).increment(); //todo
                 }
             }
         } catch (IOException e) {

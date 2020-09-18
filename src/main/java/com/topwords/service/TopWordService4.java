@@ -37,8 +37,8 @@ import java.util.concurrent.atomic.LongAdder;
 
 @Service
 @ParametersAreNonnullByDefault
-public class TopWordService extends AbstractLifecycle {
-    private static final Logger LOGGER = LoggerFactory.getLogger(TopWordService.class);
+public class TopWordService4 extends AbstractLifecycle {
+    private static final Logger LOGGER = LoggerFactory.getLogger(TopWordService4.class);
 
     public static final String WORDS_REGEX = "[^A-Za-zА-Яа-яÃƒâ€¦Ãƒâ€žÃƒâ€“a-zÃƒÂ¥ÃƒÂ¤ÃƒÂ¶]+";
 
@@ -51,7 +51,7 @@ public class TopWordService extends AbstractLifecycle {
     private final PageClient pageClient;
     private final ExecutorService executorService;
 
-    public TopWordService(
+    public TopWordService4(
             @Value("${top-word-service.top-count:15}") int topCount,
             @Value("${top-word-service.thread-count:4}") int threadCount,
             PageClient pageClient

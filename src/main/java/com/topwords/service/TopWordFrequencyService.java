@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.ParametersAreNonnullByDefault;
+import javax.annotation.PreDestroy;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -21,10 +22,8 @@ import java.util.concurrent.atomic.LongAdder;
 
 @Service
 @ParametersAreNonnullByDefault
-public class TopWordService2 {
-    private static final Logger LOGGER = LoggerFactory.getLogger(TopWordService2.class);
-
-    public static final String WORDS_REGEX = "[^A-Za-zА-Яа-яÃƒâ€¦Ãƒâ€žÃƒâ€“a-zÃƒÂ¥ÃƒÂ¤ÃƒÂ¶]+";
+public class TopWordFrequencyService {
+    private static final Logger LOGGER = LoggerFactory.getLogger(TopWordFrequencyService.class);
 
     private final int topCount;
     private final CrawlerService crawlerService;
@@ -32,7 +31,7 @@ public class TopWordService2 {
     private final NotifierService notifierService;
     private final ExecutorService executorService;
 
-    public TopWordService2(
+    public TopWordFrequencyService(
             @Value("${top-word-service.top-count:15}") int topCount,
             @Value("${top-word-service.thread-count:4}") int threadCount,
             CrawlerService crawlerService,
@@ -55,15 +54,20 @@ public class TopWordService2 {
                 );
     }
 
-    public Map<String, Long> getTopWords(String urlString, int depth) {
+    public Map<String, Long> getTopWordsFrequency(String urlString, int depth) {
         Object root = new Object();
         prepareSearch(root, urlString, depth);
         crawlerService.startCrawl(root, urlString);
         notifierService.waitCrawlFinish(root);
         Map<String, LongAdder> wordFrequencyMap = crawlerService.getCrawlResult(root);
-        Map<String, Long> result = getTopWords(wordFrequencyMap);
+        Map<String, Long> result = getTopWordsFrequency(wordFrequencyMap);
         executorService.execute(() -> cleanForRoot(root));
         return result;
+    }
+
+    @PreDestroy
+    protected void stop() {
+        executorService.shutdownNow();
     }
 
     private void prepareSearch(Object root, String urlSource, int depth) {
@@ -72,7 +76,7 @@ public class TopWordService2 {
         crawlerService.prepareForRoot(root, urlSource, depth);
     }
 
-    private Map<String, Long> getTopWords(Map<String, LongAdder> wordFrequencyMap) {
+    private Map<String, Long> getTopWordsFrequency(Map<String, LongAdder> wordFrequencyMap) {
         SortedMap<Long, List<String>> sortedMap = new TreeMap<>(Collections.reverseOrder());
         for (Map.Entry<String, LongAdder> entry : wordFrequencyMap.entrySet()) {
             sortedMap.computeIfAbsent(entry.getValue().longValue(), x -> new ArrayList<>()).add(entry.getKey());

@@ -24,6 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.LongAdder;
 
 @Service
@@ -39,6 +40,7 @@ public class CrawlerService {
     private final TextParserService textParserService;
 
     private final ExecutorService executorService;
+    private AtomicInteger atomicInteger;
 
     public CrawlerService(
             @Value("${crawler-service.thread-count:4}") int threadCount,
@@ -74,6 +76,7 @@ public class CrawlerService {
     }
 
     public void startCrawl(Object root, String link) {
+        atomicInteger = new AtomicInteger(0);
         crawl(root, link, 1);
     }
 
@@ -82,6 +85,7 @@ public class CrawlerService {
         baseUrls.remove(root);
         depths.remove(root);
         seen.remove(root);
+        System.out.println("!!!!!-----!!!!!---- " + atomicInteger.get());
     }
 
     @PreDestroy
@@ -89,30 +93,33 @@ public class CrawlerService {
         executorService.shutdownNow();
     }
 
-    private void crawl(Object root, String link, int currentDepth) {
-        executorService.execute(() -> doCrawl(root, link, currentDepth));
-    }
 
-    private void doCrawl(Object root, String link, int currentDepth) {
+    private void crawl(Object root, String link, int currentDepth) {
         ConcurrentMap<String, Boolean> objSeen = seen.get(root);
         Boolean wasSeen = objSeen.putIfAbsent(link, true);
-        if (wasSeen != null || currentDepth > depths.get(root)) {
+        if (wasSeen != null) {
+//            System.out.println("------ was seen "+link);
+            return;
+        } else if (currentDepth > depths.get(root)) {
             return;
         }
+        atomicInteger.addAndGet(1);
         LOGGER.debug(">> Depth: [{}]  link: [{}]", currentDepth, link);
         notifierService.increment(root);
 
-        Document doc;
-        try {
-            String dataFromUrl = getDataFromUrl(link);
-            doc = Jsoup.parse(dataFromUrl);
-        } catch (Exception e) {
-            LOGGER.error("Exception for url [{}]: ", link, e);
-            notifierService.decrementPending(root);
-            return;
-        }
-        extractLinks(root, doc, currentDepth);
-        textParserService.parseText(root, doc, link);
+        executorService.execute(() -> {
+            Document doc;
+            try {
+                String dataFromUrl = getDataFromUrl(link);
+                doc = Jsoup.parse(dataFromUrl);
+            } catch (Exception e) {
+                LOGGER.error("Exception for url [{}]: ", link, e);
+                notifierService.decrementPending(root);
+                return;
+            }
+            extractLinks(root, doc, currentDepth);
+            textParserService.parseText(root, doc, link);
+        });
     }
 
     @Nullable
@@ -123,6 +130,7 @@ public class CrawlerService {
             if (link != null && !link.equals("")) {
                 link = prepareLink(link, root);
                 if (link != null) {
+//                    System.out.println("found "+ link);
                     crawl(root, link, currentDepth + 1);
                 }
             }
@@ -142,14 +150,13 @@ public class CrawlerService {
             }
             return sb.toString();
         } catch (Throwable t) {
-            t.printStackTrace();
             throw new RuntimeException("Could not fetch data from " + url);
         } finally {
             if (rd != null) {
                 try {
                     rd.close();
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    LOGGER.debug("", e);
                 }
             }
         }
