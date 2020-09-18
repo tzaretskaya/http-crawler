@@ -35,8 +35,8 @@ public class TopWordFrequencyService {
     private final ExecutorService executorService;
 
     public TopWordFrequencyService(
-            @Value("${top-word-service-frequency.top-count:15}") int topCount,
-            @Value("${top-word-service-frequency.thread-count:1}") int threadCount,
+            @Value("${top-word-frequency-service.top-count}") int topCount,
+            @Value("${top-word-frequency-service.thread-count}") int threadCount,
             CrawlerService crawlerService,
             TextParserService textParserService,
             NotifierService notifierService

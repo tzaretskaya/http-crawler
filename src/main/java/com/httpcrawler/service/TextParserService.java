@@ -35,7 +35,7 @@ public class TextParserService {
     private final ExecutorService executorService;
 
     public TextParserService(
-            @Value("${text-parser.thread-count:4}") int threadCount,
+            @Value("${text-parser-service.thread-count}") int threadCount,
             NotifierService notifierService
     ) {
         this.wordFrequencies = new ConcurrentHashMap<>();
