@@ -150,7 +150,7 @@ public class TopWordService extends AbstractLifecycle {
             List<String> links = scanAndGetLinks(root, link);
             if (links != null) {
                 for (String l : links) {
-                    executorService.execute(() -> handle(root, l, currentDepth + 1));
+                    handle(root, l, currentDepth + 1);
                 }
             }
         });

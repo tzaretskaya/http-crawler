@@ -2,6 +2,7 @@ package com.topwords.controller;
 
 import com.topwords.dto.TopWordsResponse;
 import com.topwords.service.TopWordService;
+import com.topwords.service.TopWordService2;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -20,9 +21,11 @@ import java.util.Map;
 public class TopWordController {
 
     private final TopWordService topWordService;
+    private final TopWordService2 topWordService2;
 
-    public TopWordController(TopWordService topWordService) {
+    public TopWordController(TopWordService topWordService, TopWordService2 topWordService2) {
         this.topWordService = topWordService;
+        this.topWordService2 = topWordService2;
     }
 
     @GetMapping("/top-words")
@@ -40,13 +43,16 @@ public class TopWordController {
         } catch (MalformedURLException e) {
             throw new ValidationException("urlString must be url");
         }
-        long t1 = System.nanoTime();
         if (urlString.endsWith("/")) {
             urlString = urlString.substring(0, urlString.length() - 1);
         }
-        Map<String, Long> result = topWordService.getTopWords(urlString, depth);
+        long t1 = System.nanoTime();
+//        Map<String, Long> result = topWordService.getTopWords(urlString, depth);
         long t2 = System.nanoTime();
+        Map<String, Long> result2 = topWordService2.getTopWords(urlString, depth);
+        long t3 = System.nanoTime();
         System.out.println("time " + (t2 - t1));
-        return new TopWordsResponse(result);
+        System.out.println("time2 " + (t3 - t2));
+        return new TopWordsResponse(result2);
     }
 }
