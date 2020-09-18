@@ -1,4 +1,4 @@
-package com.topwords.repository.client;
+package com.httpcrawler.repository.client;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.client.config.CookieSpecs;

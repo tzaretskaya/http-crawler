@@ -1,7 +1,8 @@
-package com.topwords.service;
+package com.httpcrawler.service;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.topwords.repository.client.PageClient;
+import com.httpcrawler.data.Root;
+import com.httpcrawler.repository.client.PageClient;
 import org.apache.http.HttpEntity;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -24,7 +25,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.LongAdder;
 
 @Service
@@ -32,15 +32,14 @@ import java.util.concurrent.atomic.LongAdder;
 public class CrawlerService {
     private static final Logger LOGGER = LoggerFactory.getLogger(CrawlerService.class);
 
-    private final ConcurrentMap<Object, ConcurrentMap<String, Boolean>> seen;
-    private final ConcurrentMap<Object, String> baseUrls;
-    private final ConcurrentMap<Object, Integer> depths;
+    private final ConcurrentMap<Root, ConcurrentMap<String, Boolean>> seen;
+    private final ConcurrentMap<Root, String> baseUrls;
+    private final ConcurrentMap<Root, Integer> depths;
     private final PageClient pageClient;
     private final NotifierService notifierService;
     private final TextParserService textParserService;
 
     private final ExecutorService executorService;
-    private AtomicInteger atomicInteger;
 
     public CrawlerService(
             @Value("${crawler-service.thread-count:4}") int threadCount,
@@ -65,27 +64,24 @@ public class CrawlerService {
         );
     }
 
-    public void prepareForRoot(Object root, String urlSource, int depth) {
+    public void prepareForRoot(Root root, String urlSource, int depth) {
         seen.putIfAbsent(root, new ConcurrentHashMap<>());
         depths.putIfAbsent(root, depth);
         baseUrls.putIfAbsent(root, urlSource);
     }
 
-    public Map<String, LongAdder> getCrawlResult(Object root) {
+    public Map<String, LongAdder> getCrawlResult(Root root) {
         return textParserService.getResult(root);
     }
 
-    public void startCrawl(Object root, String link) {
-        atomicInteger = new AtomicInteger(0);
+    public void startCrawl(Root root, String link) {
         crawl(root, link, 1);
     }
 
-    public void cleanForRoot(Object root) {
-        System.out.println("CLEANING");
+    public void cleanForRoot(Root root) {
         baseUrls.remove(root);
         depths.remove(root);
         seen.remove(root);
-        System.out.println("!!!!!-----!!!!!---- " + atomicInteger.get());
     }
 
     @PreDestroy
@@ -93,17 +89,12 @@ public class CrawlerService {
         executorService.shutdownNow();
     }
 
-
-    private void crawl(Object root, String link, int currentDepth) {
+    private void crawl(Root root, String link, int currentDepth) {
         ConcurrentMap<String, Boolean> objSeen = seen.get(root);
         Boolean wasSeen = objSeen.putIfAbsent(link, true);
-        if (wasSeen != null) {
-//            System.out.println("------ was seen "+link);
-            return;
-        } else if (currentDepth > depths.get(root)) {
+        if (wasSeen != null || currentDepth > depths.get(root)) {
             return;
         }
-        atomicInteger.addAndGet(1);
         LOGGER.debug(">> Depth: [{}]  link: [{}]", currentDepth, link);
         notifierService.increment(root);
 
@@ -113,7 +104,7 @@ public class CrawlerService {
                 String dataFromUrl = getDataFromUrl(link);
                 doc = Jsoup.parse(dataFromUrl);
             } catch (Exception e) {
-                LOGGER.error("Exception for url [{}]: ", link, e);
+                LOGGER.debug("Exception for url [{}]: ", link, e);
                 notifierService.decrementPending(root);
                 return;
             }
@@ -122,15 +113,13 @@ public class CrawlerService {
         });
     }
 
-    @Nullable
-    private void extractLinks(Object root, Document doc, int currentDepth) {
+    private void extractLinks(Root root, Document doc, int currentDepth) {
         Elements elements = doc.select("a");
         for (Element element : elements) {
             String link = element.attributes().get("href");
             if (link != null && !link.equals("")) {
-                link = prepareLink(link, root);
+                link = prepareLink(root, link);
                 if (link != null) {
-//                    System.out.println("found "+ link);
                     crawl(root, link, currentDepth + 1);
                 }
             }
@@ -138,7 +127,6 @@ public class CrawlerService {
     }
 
     private String getDataFromUrl(String url) {
-        LOGGER.debug("getData from url: [{}]  ", url);
         BufferedReader rd = null;
         try {
             HttpEntity httpEntity = pageClient.getPage(url);
@@ -149,7 +137,7 @@ public class CrawlerService {
                 sb.append(line);
             }
             return sb.toString();
-        } catch (Throwable t) {
+        } catch (Exception t) {
             throw new RuntimeException("Could not fetch data from " + url);
         } finally {
             if (rd != null) {
@@ -162,7 +150,8 @@ public class CrawlerService {
         }
     }
 
-    private String prepareLink(String link, Object root) {
+    @Nullable
+    private String prepareLink(Root root, String link) {
         try {
             URI uri = new URI(link);
             String prefix = baseUrls.get(root);

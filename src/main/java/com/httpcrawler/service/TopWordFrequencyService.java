@@ -1,6 +1,7 @@
-package com.topwords.service;
+package com.httpcrawler.service;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.httpcrawler.data.Root;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -10,7 +11,6 @@ import javax.annotation.ParametersAreNonnullByDefault;
 import javax.annotation.PreDestroy;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,12 +18,15 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.LongAdder;
 
 @Service
 @ParametersAreNonnullByDefault
 public class TopWordFrequencyService {
     private static final Logger LOGGER = LoggerFactory.getLogger(TopWordFrequencyService.class);
+
+    private static final int RANDOM_MAX = 1_000_000;
 
     private final int topCount;
     private final CrawlerService crawlerService;
@@ -32,8 +35,8 @@ public class TopWordFrequencyService {
     private final ExecutorService executorService;
 
     public TopWordFrequencyService(
-            @Value("${top-word-service.top-count:15}") int topCount,
-            @Value("${top-word-service.thread-count:4}") int threadCount,
+            @Value("${top-word-service-frequency.top-count:15}") int topCount,
+            @Value("${top-word-service-frequency.thread-count:1}") int threadCount,
             CrawlerService crawlerService,
             TextParserService textParserService,
             NotifierService notifierService
@@ -55,7 +58,7 @@ public class TopWordFrequencyService {
     }
 
     public Map<String, Long> getTopWordsFrequency(String urlString, int depth) {
-        Object root = new Object();
+        Root root = new Root(urlString, depth, ThreadLocalRandom.current().nextInt(RANDOM_MAX));
         prepareSearch(root, urlString, depth);
         crawlerService.startCrawl(root, urlString);
         notifierService.waitCrawlFinish(root);
@@ -70,7 +73,7 @@ public class TopWordFrequencyService {
         executorService.shutdownNow();
     }
 
-    private void prepareSearch(Object root, String urlSource, int depth) {
+    private void prepareSearch(Root root, String urlSource, int depth) {
         textParserService.prepareForRoot(root);
         notifierService.prepareForRoot(root);
         crawlerService.prepareForRoot(root, urlSource, depth);
@@ -84,10 +87,7 @@ public class TopWordFrequencyService {
         int count = 0;
         Map<String, Long> result = new LinkedHashMap<>(topCount);
         for (Map.Entry<Long, List<String>> entry : sortedMap.entrySet()) {
-            List<String> value = entry.getValue();
-            value.sort(Comparator.naturalOrder()); //todo not necessary
-            System.out.println(entry.getKey() + "-" + value);
-            for (String str : value) {
+            for (String str : entry.getValue()) {
                 result.put(str, entry.getKey());
                 count++;
                 if (count >= topCount) {
@@ -101,7 +101,7 @@ public class TopWordFrequencyService {
         return result;
     }
 
-    private void cleanForRoot(Object root) {
+    private void cleanForRoot(Root root) {
         crawlerService.cleanForRoot(root);
         notifierService.cleanForRoot(root);
         textParserService.cleanForRoot(root);

@@ -1,6 +1,7 @@
-package com.topwords.service;
+package com.httpcrawler.service;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.httpcrawler.data.Root;
 import org.jsoup.nodes.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,7 +31,7 @@ public class TextParserService {
 
     public static final String WORDS_REGEX = "[^A-Za-zА-Яа-яÃƒâ€¦Ãƒâ€žÃƒâ€“a-zÃƒÂ¥ÃƒÂ¤ÃƒÂ¶]+";
 
-    private final ConcurrentMap<Object, ConcurrentMap<String, LongAdder>> wordFrequencies;
+    private final ConcurrentMap<Root, ConcurrentMap<String, LongAdder>> wordFrequencies;
     private final NotifierService notifierService;
     private final ExecutorService executorService;
     private AtomicInteger atomicInteger;
@@ -52,21 +53,20 @@ public class TextParserService {
         );
     }
 
-    public void prepareForRoot(Object root) {
+    public void prepareForRoot(Root root) {
         atomicInteger = new AtomicInteger(0);
         wordFrequencies.putIfAbsent(root, new ConcurrentHashMap<>());
     }
 
-    public void parseText(Object root, Document doc, String url) {
+    public void parseText(Root root, Document doc, String url) {
         executorService.execute(() -> doParseText(root, doc, url));
     }
 
-    public void cleanForRoot(Object obj) {
+    public void cleanForRoot(Root obj) {
         wordFrequencies.remove(obj);
     }
 
-    public Map<String, LongAdder> getResult(Object root) {
-        System.out.println("words number: "+atomicInteger.get());
+    public Map<String, LongAdder> getResult(Root root) {
         return new HashMap<>(wordFrequencies.get(root));
     }
 
@@ -75,8 +75,7 @@ public class TextParserService {
         executorService.shutdownNow();
     }
 
-    private void doParseText(Object root, Document doc, String url) {
-        LOGGER.debug("parseText for url: [{}]  ", url);
+    private void doParseText(Root root, Document doc, String url) {
         String text = doc.body().text();
         try (
                 BufferedReader reader = new BufferedReader(

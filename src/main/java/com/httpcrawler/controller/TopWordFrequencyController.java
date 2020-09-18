@@ -1,7 +1,7 @@
-package com.topwords.controller;
+package com.httpcrawler.controller;
 
-import com.topwords.dto.TopWordsResponse;
-import com.topwords.service.TopWordFrequencyService;
+import com.httpcrawler.dto.TopWordsResponse;
+import com.httpcrawler.service.TopWordFrequencyService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -26,7 +26,7 @@ public class TopWordFrequencyController {
     }
 
     @GetMapping("/top-words")
-    public TopWordsResponse getTopWords(
+    public TopWordsResponse getTopWordsFrequency(
             @NotBlank(message = "urlString must be not blank")
             @RequestParam("urlString")
                     String urlString,
@@ -43,10 +43,7 @@ public class TopWordFrequencyController {
         if (urlString.endsWith("/")) {
             urlString = urlString.substring(0, urlString.length() - 1);
         }
-        long t2 = System.nanoTime();
         Map<String, Long> result2 = topWordFrequencyService.getTopWordsFrequency(urlString, depth);
-        long t3 = System.nanoTime();
-        System.out.println("time2 " + (t3 - t2));
         return new TopWordsResponse(result2);
     }
 }

@@ -1,5 +1,6 @@
-package com.topwords.service;
+package com.httpcrawler.service;
 
+import com.httpcrawler.data.Root;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -14,40 +15,46 @@ import java.util.concurrent.atomic.LongAdder;
 public class NotifierService {
     private static final Logger LOGGER = LoggerFactory.getLogger(NotifierService.class);
 
-    private final ConcurrentMap<Object, LongAdder> pending;
+    private final ConcurrentMap<Root, LongAdder> pending;
+    private final ConcurrentMap<Root, Object> locks;
 
     public NotifierService() {
         this.pending = new ConcurrentHashMap<>();
+        this.locks = new ConcurrentHashMap<>();
     }
 
-    public void prepareForRoot(Object root) {
+    public void prepareForRoot(Root root) {
         pending.putIfAbsent(root, new LongAdder());
+        locks.putIfAbsent(root, new Object());
     }
 
-    public void increment(Object root) {
+    public void increment(Root root) {
         pending.get(root).increment();
     }
 
-    public void decrementPending(Object root) {
+    public void decrementPending(Root root) {
         pending.get(root).decrement();
         if (pending.get(root).longValue() == 0L) {
-            synchronized (root) {
-                root.notify();
+            Object lock = locks.get(root);
+            synchronized (lock) {
+                lock.notifyAll();
             }
         }
     }
 
-    public void waitCrawlFinish(Object root) {
-        synchronized (root) {
+    public void waitCrawlFinish(Root root) {
+        Object lock = locks.get(root);
+        synchronized (lock) {
             try {
-                root.wait();
+                lock.wait();
             } catch (InterruptedException e) {
                 LOGGER.error("join was interrupted. Return not finished map");
             }
         }
     }
 
-    public void cleanForRoot(Object obj) {
+    public void cleanForRoot(Root obj) {
+        locks.remove(obj);
         pending.remove(obj);
     }
 }

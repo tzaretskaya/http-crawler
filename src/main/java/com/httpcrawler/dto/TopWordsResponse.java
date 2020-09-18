@@ -1,4 +1,4 @@
-package com.topwords.dto;
+package com.httpcrawler.dto;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.Collections;
