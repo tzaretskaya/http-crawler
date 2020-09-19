@@ -86,11 +86,11 @@ public class TextParserService {
                     if ("".equals(word)) {
                         continue;
                     }
-                    wordFrequencies.get(root).computeIfAbsent(word, x -> new LongAdder()).increment(); //todo
+                    wordFrequencies.get(root).computeIfAbsent(word, x -> new LongAdder()).increment();
                 }
             }
         } catch (IOException e) {
-            LOGGER.debug("Text parsing exception for [" + url + "]: " + e.getMessage(), e);
+            LOGGER.debug("Text parsing exception for [{}]", url, e);
         } finally {
             notifierService.decrementPending(root);
         }
