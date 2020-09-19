@@ -59,9 +59,9 @@ public class TopWordFrequencyService {
 
     public Map<String, Long> getTopWordsFrequency(String urlString, int depth) {
         Root root = new Root(urlString, depth, ThreadLocalRandom.current().nextInt(RANDOM_MAX));
-        prepareSearch(root, urlString, depth);
+        prepareForTasks(root, urlString, depth);
         crawlerService.startCrawl(root, urlString);
-        notifierService.waitCrawlFinish(root);
+        notifierService.waitWorkFinish(root);
         Map<String, LongAdder> wordFrequencyMap = crawlerService.getCrawlResult(root);
         Map<String, Long> result = getTopWordsFrequency(wordFrequencyMap);
         executorService.execute(() -> cleanForRoot(root));
@@ -73,7 +73,7 @@ public class TopWordFrequencyService {
         executorService.shutdownNow();
     }
 
-    private void prepareSearch(Root root, String urlSource, int depth) {
+    private void prepareForTasks(Root root, String urlSource, int depth) {
         textParserService.prepareForRoot(root);
         notifierService.prepareForRoot(root);
         crawlerService.prepareForRoot(root, urlSource, depth);

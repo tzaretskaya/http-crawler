@@ -42,7 +42,7 @@ public class NotifierService {
         }
     }
 
-    public void waitCrawlFinish(Root root) {
+    public void waitWorkFinish(Root root) {
         Object lock = locks.get(root);
         synchronized (lock) {
             try {
